@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <title>Student Grade Lookup</title>
+<!-- SheetJS from CDN — CSP-free on GitHub Pages -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
   h1   { color: #333; }
@@ -13,9 +15,6 @@
   .student  { font-size: 18px; text-align: center; color: #555; }
   .error    { color: #b00; }
   .info     { color: #666; font-style: italic; }
-  .diag     { margin-top: 10px; padding: 10px; background: #fff7e6; border: 1px solid #f0c674;
-              font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
-  button    { font-size: 14px; padding: 6px 12px; margin-top: 10px; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -25,9 +24,92 @@
   <input type="text" id="searchBox" placeholder="e.g. Jane Doe" autocomplete="off" disabled>
 
   <div id="result"><p class="info">Loading grades...</p></div>
-  <div id="diag" class="diag" style="display:none"></div>
-  <button id="retryBtn" style="display:none">Retry</button>
 
-  <script src="grade_lookup.js"></script>
+<script>
+let students = [];
+let status   = 'loading';
+
+const SKIP_ROWS = 3;            // skip rows 1, 2, 3 in Excel
+const GRADES_FILE = 'grades.xlsx';   // now an xlsx file
+
+const searchEl = document.getElementById('searchBox');
+const resultEl = document.getElementById('result');
+
+searchEl.addEventListener('input', onSearch);
+window.addEventListener('DOMContentLoaded', loadGrades);
+
+async function loadGrades() {
+  try {
+    const response = await fetch(GRADES_FILE);
+    if (!response.ok) throw new Error('Could not fetch "' + GRADES_FILE + '" (HTTP ' + response.status + ').');
+    const buffer = await response.arrayBuffer();
+
+    // SheetJS reads the binary xlsx
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+    const rows     = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    // Column A (index 0) = name ("Last, First"), Column B (index 1) = grade.
+    // Skip the first SKIP_ROWS rows (headers/intro rows in Excel).
+    students = [];
+    for (let i = SKIP_ROWS; i < rows.length; i++) {
+      const raw   = (rows[i] && rows[i][0] != null ? String(rows[i][0]) : '').trim();
+      const grade = (rows[i] && rows[i][1] != null ? String(rows[i][1]) : '').trim();
+      if (!raw) continue;
+      const display = formatName(raw);   // "Doe, Jane" -> "Jane Doe"
+      if (display) students.push({ name: display, grade });
+    }
+
+    if (students.length === 0) throw new Error('No student rows found in columns A and B.');
+
+    status = 'ready';
+    searchEl.disabled = false;
+    resultEl.innerHTML = '<p class="info">Loaded ' + students.length + ' student(s). Type your name above to look up your grade.</p>';
+    console.log('Students loaded (first 3):', students.slice(0, 3)); // quick debug
+  } catch (err) {
+    status = 'error';
+    resultEl.innerHTML = '<p class="error">Error: ' + escapeHtml(err.message) + '</p>';
+    console.error('loadGrades error:', err);
+  }
+}
+
+function onSearch() {
+  if (status !== 'ready') {
+    resultEl.innerHTML = '<p class="info">Grades are still loading. Please wait a moment.</p>';
+    return;
+  }
+  const q = searchEl.value.trim();
+  if (!q) { resultEl.innerHTML = ''; return; }
+
+  const hit = students.find(s => s.name.toLowerCase() === q.toLowerCase());
+
+  if (hit) {
+    resultEl.innerHTML =
+      '<p class="student">' + escapeHtml(hit.name) + '</p>' +
+      '<p class="grade">'   + escapeHtml(hit.grade || '(no grade recorded)') + '</p>';
+  } else {
+    resultEl.innerHTML =
+      '<p class="error">No student found with the exact name &ldquo;' + escapeHtml(q) + '&rdquo;.</p>' +
+      '<p class="info">Format is <em>First Last</em> (e.g. &ldquo;Jane Doe&rdquo;). Check spelling, capitalization, and spacing.</p>';
+  }
+}
+
+function formatName(raw) {
+  if (!raw) return '';
+  if (raw.includes(',')) {
+    const [last, ...rest] = raw.split(',').map(s => s.trim());
+    const first = rest.join(', ').trim();
+    if (!first || !last) return '';
+    return first + ' ' + last;
+  }
+  return raw.trim();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]
+  ));
+}
+</script>
 </body>
 </html>
