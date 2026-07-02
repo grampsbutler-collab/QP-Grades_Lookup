@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Student Grade Lookup</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+  h1   { color: #333; }
+  label { display: block; margin-top: 20px; font-weight: bold; }
+  input { font-size: 16px; padding: 8px; box-sizing: border-box; width: 100%; }
+  #result { margin-top: 30px; padding: 20px; background: #f0f0f0; border-radius: 8px; min-height: 80px; }
+  .grade    { font-size: 48px; font-weight: bold; color: #2c5aa0; text-align: center; margin: 10px 0; }
+  .student  { font-size: 18px; text-align: center; color: #555; }
+  .error    { color: #b00; }
+  .info     { color: #666; font-style: italic; }
+  .diag     { margin-top: 10px; padding: 10px; background: #fff7e6; border: 1px solid #f0c674;
+              font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-all; }
+  button    { font-size: 14px; padding: 6px 12px; margin-top: 10px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <h1>Student Grade Lookup</h1>
+
+  <label for="searchBox">Type your name (First Last):</label>
+  <input type="text" id="searchBox" placeholder="e.g. Jane Doe" autocomplete="off" disabled>
+
+  <div id="result"><p class="info">Loading grades...</p></div>
+  <div id="diag" class="diag" style="display:none"></div>
+  <button id="retryBtn" style="display:none">Retry</button>
+
+  <script src="grade_lookup.js"></script>
+</body>
+</html>
